@@ -72,6 +72,7 @@ DoctrineBridge
  * Deprecated passing an `IdReader` to the `DoctrineChoiceLoader` when the query cannot be optimized with single id field.
  * Deprecated not passing an `IdReader` to the `DoctrineChoiceLoader` when the query can be optimized with single id field.
  * Deprecated `RegistryInterface`, use `Doctrine\Common\Persistence\ManagerRegistry`.
+ * Configuring `doctrine/cache` in `AbstractDoctrineExtension` has been deprecated. Use the `pool` or `service` cache types.
 
 Filesystem
 ----------

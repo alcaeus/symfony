@@ -185,6 +185,7 @@ class DoctrineExtensionTest extends TestCase
 
     /**
      * @dataProvider providerBasicDrivers
+     * @group legacy
      */
     public function testLoadBasicCacheDriver(string $class, array $config, array $expectedCalls = [])
     {
@@ -226,6 +227,23 @@ class DoctrineExtensionTest extends TestCase
         ];
 
         $container->setDefinition('service_driver', $definition);
+
+        $this->invokeLoadCacheDriver($objectManager, $container, $cacheName);
+
+        $this->assertTrue($container->hasAlias('doctrine.orm.default_metadata_cache'));
+    }
+
+    public function testPoolCacheDriver()
+    {
+        $cacheName = 'metadata_cache';
+        $container = $this->createContainer();
+        $objectManager = [
+            'name' => 'default',
+            'metadata_cache_driver' => [
+                'type' => 'pool',
+                'pool' => 'service_driver',
+            ],
+        ];
 
         $this->invokeLoadCacheDriver($objectManager, $container, $cacheName);
 

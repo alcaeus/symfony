@@ -11,6 +11,8 @@
 
 namespace Symfony\Bridge\Doctrine\DependencyInjection;
 
+use LogicException;
+use Symfony\Component\Cache\DoctrineProvider;
 use Symfony\Component\DependencyInjection\Alias;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -304,13 +306,40 @@ abstract class AbstractDoctrineExtension extends Extension
      */
     protected function loadCacheDriver($cacheName, $objectManagerName, array $cacheDriver, ContainerBuilder $container)
     {
-        $cacheDriverServiceId = $this->getObjectManagerElementName($objectManagerName.'_'.$cacheName);
+        $serviceId = null;
+        $aliasId   = $this->getObjectManagerElementName(sprintf('%s_%s', $objectManagerName, $cacheName));
+
+        if (null === $cacheDriver['type']) {
+            $cacheDriver = [
+                'type' => 'pool',
+                'pool' => $this->getPoolNameForCacheDriver($cacheName),
+            ];
+        }
 
         switch ($cacheDriver['type']) {
             case 'service':
-                $container->setAlias($cacheDriverServiceId, new Alias($cacheDriver['id'], false));
+                $serviceId = $cacheDriver['id'];
+                break;
 
-                return $cacheDriverServiceId;
+            case 'pool':
+                $serviceId = $this->createPoolCacheDefinition($container, $cacheDriver['pool']);
+                break;
+        }
+
+        if (null !== $serviceId) {
+            $container->setAlias($aliasId, new Alias($serviceId, false));
+
+            return $aliasId;
+        }
+
+        return $this->loadLegacyCacheDriver($cacheName, $objectManagerName, $cacheDriver, $container);
+    }
+
+    private function loadLegacyCacheDriver($cacheName, $objectManagerName, array $cacheDriver, ContainerBuilder $container)
+    {
+        $cacheDriverServiceId = $this->getObjectManagerElementName($objectManagerName.'_'.$cacheName);
+
+        switch ($cacheDriver['type']) {
             case 'memcached':
                 $memcachedClass = !empty($cacheDriver['class']) ? $cacheDriver['class'] : '%'.$this->getObjectManagerElementName('cache.memcached.class').'%';
                 $memcachedInstanceClass = !empty($cacheDriver['instance_class']) ? $cacheDriver['instance_class'] : '%'.$this->getObjectManagerElementName('cache.memcached_instance.class').'%';
@@ -350,6 +379,11 @@ abstract class AbstractDoctrineExtension extends Extension
             default:
                 throw new \InvalidArgumentException(sprintf('"%s" is an unrecognized Doctrine cache driver.', $cacheDriver['type']));
         }
+
+        @trigger_error(
+            sprintf('Using the "%s" type for cache "%s" is deprecated since Symfony 4.4 and will be dropped in Symfony 5. Please use the "service" or "pool" types exclusively.', $cacheDriver['type'], $cacheName),
+            E_USER_DEPRECATED
+        );
 
         $cacheDef->setPublic(false);
 
@@ -455,5 +489,30 @@ abstract class AbstractDoctrineExtension extends Extension
         }
 
         return $autoMappedManager;
+    }
+
+    private function createPoolCacheDefinition(ContainerBuilder $container, string $poolName) : string
+    {
+        if (!class_exists(DoctrineProvider::class)) {
+            throw new LogicException('Using the "pool" cache type is only supported when symfony/cache is installed.');
+        }
+
+        $serviceId = sprintf('doctrine.orm.cache.pool.%s', $poolName);
+
+        $definition = $container->register($serviceId, DoctrineProvider::class);
+        $definition->addArgument(new Reference($poolName));
+        $definition->setPrivate(true);
+
+        return $serviceId;
+    }
+
+    private function getPoolNameForCacheDriver(string $driverName) : string
+    {
+        switch ($driverName) {
+            case 'metadata_cache':
+                return 'cache.system';
+            default:
+                return 'cache.app';
+        }
     }
 }

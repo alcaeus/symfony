@@ -7,6 +7,7 @@ CHANGELOG
  * added `DoctrineClearEntityManagerMiddleware`
  * deprecated `RegistryInterface`, use `Doctrine\Common\Persistence\ManagerRegistry`
  * added support for invokable event listeners
+ * added support for the `pool` cache type, using Symfony cache pools
 
 4.3.0
 -----

@@ -122,6 +122,7 @@ DoctrineBridge
  * Passing an `IdReader` to the `DoctrineChoiceLoader` when the query cannot be optimized with single id field will throw an exception, pass `null` instead
  * Not passing an `IdReader` to the `DoctrineChoiceLoader` when the query can be optimized with single id field will not apply any optimization
  * The `RegistryInterface` has been removed.
+ * Configuring `doctrine/cache` has been removed from `AbstractDoctrineExtension`. Use the `pool` or `service` cache types.
 
 DomCrawler
 ----------
