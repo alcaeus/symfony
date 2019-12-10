@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Cache\Simple;
 
+use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\CacheProvider;
 use Symfony\Component\Cache\Traits\DoctrineTrait;
 
@@ -22,10 +23,13 @@ class DoctrineCache extends AbstractCache
      * @param string $namespace
      * @param int    $defaultLifetime
      */
-    public function __construct(CacheProvider $provider, $namespace = '', $defaultLifetime = 0)
+    public function __construct(Cache $provider, $namespace = '', $defaultLifetime = 0)
     {
         parent::__construct('', $defaultLifetime);
         $this->provider = $provider;
-        $provider->setNamespace($namespace);
+
+        if ($this->provider instanceof CacheProvider) {
+            $provider->setNamespace($namespace);
+        }
     }
 }

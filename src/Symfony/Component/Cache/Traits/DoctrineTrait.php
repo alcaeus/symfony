@@ -11,6 +11,13 @@
 
 namespace Symfony\Component\Cache\Traits;
 
+use Doctrine\Common\Cache\Cache;
+use Doctrine\Common\Cache\CacheProvider;
+use Doctrine\Common\Cache\ClearableCache;
+use Doctrine\Common\Cache\FlushableCache;
+use Doctrine\Common\Cache\MultiGetCache;
+use Doctrine\Common\Cache\MultiPutCache;
+
 /**
  * @author Nicolas Grekas <p@tchwork.com>
  *
@@ -18,6 +25,9 @@ namespace Symfony\Component\Cache\Traits;
  */
 trait DoctrineTrait
 {
+    /**
+     * @var Cache
+     */
     private $provider;
 
     /**
@@ -26,7 +36,10 @@ trait DoctrineTrait
     public function reset()
     {
         parent::reset();
-        $this->provider->setNamespace($this->provider->getNamespace());
+
+        if ($this->provider instanceof CacheProvider) {
+            $this->provider->setNamespace($this->provider->getNamespace());
+        }
     }
 
     /**
@@ -36,7 +49,11 @@ trait DoctrineTrait
     {
         $unserializeCallbackHandler = ini_set('unserialize_callback_func', parent::class.'::handleUnserializeCallback');
         try {
-            return $this->provider->fetchMultiple($ids);
+            if ($this->provider instanceof MultiGetCache) {
+                return $this->provider->fetchMultiple($ids);
+            }
+
+            return array_filter(array_map([$this->provider, 'doFetch'], $ids));
         } catch (\Error $e) {
             $trace = $e->getTrace();
 
@@ -68,11 +85,15 @@ trait DoctrineTrait
      */
     protected function doClear($namespace)
     {
-        $namespace = $this->provider->getNamespace();
+        if ($this->provider instanceof ClearableCache) {
+            return $this->provider->deleteAll();
+        }
 
-        return isset($namespace[0])
-            ? $this->provider->deleteAll()
-            : $this->provider->flushAll();
+        if ($this->provider instanceof FlushableCache) {
+            return $this->provider->flushAll();
+        }
+
+        return false;
     }
 
     /**
@@ -93,6 +114,15 @@ trait DoctrineTrait
      */
     protected function doSave(array $values, $lifetime)
     {
-        return $this->provider->saveMultiple($values, $lifetime);
+        if ($this->provider instanceof MultiPutCache) {
+            return $this->provider->saveMultiple($values, $lifetime);
+        }
+
+        $ok = true;
+        foreach ($values as $key => $value) {
+            $ok = $this->provider->save($key, $value, $lifetime) && $ok;
+        }
+
+        return $ok;
     }
 }
