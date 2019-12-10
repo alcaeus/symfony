@@ -32,4 +32,12 @@ class DoctrineCache extends AbstractCache
             $provider->setNamespace($namespace);
         }
     }
+
+    /**
+     * @return Cache
+     */
+    public function getDoctrineProvider()
+    {
+        return $this->provider;
+    }
 }

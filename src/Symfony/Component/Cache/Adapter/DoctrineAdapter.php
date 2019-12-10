@@ -32,4 +32,12 @@ class DoctrineAdapter extends AbstractAdapter
             $provider->setNamespace($namespace);
         }
     }
+
+    /**
+     * @return Cache
+     */
+    public function getDoctrineProvider()
+    {
+        return $this->provider;
+    }
 }
